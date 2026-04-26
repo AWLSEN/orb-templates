@@ -60,17 +60,16 @@ ORB_TOML=$(curl -fsSL "$TEMPLATE_BASE/orb.toml.tpl" \
         -e "s|@CRON_SCHEDULE@|$CRON_SCHEDULE|g")
 
 # Convert TOML → JSON for the API body. The runtime accepts JSON for orb_config.
-# We use python's tomllib (3.11+) which is on every modern bm/vps; users on old
-# python can pip install tomli first. Fail loudly if neither is present.
-TOML_AS_JSON=$(printf '%s' "$ORB_TOML" | python3 - <<'PY'
+# Use python -c instead of `python3 - <<HEREDOC` because the heredoc form
+# competes with the printf pipe for stdin and leaves python with empty input.
+TOML_AS_JSON=$(printf '%s' "$ORB_TOML" | python3 -c '
 import json, sys
 try:
     import tomllib
 except ImportError:
     import tomli as tomllib
 print(json.dumps(tomllib.loads(sys.stdin.read())))
-PY
-)
+')
 
 # Strip the auth env var the user didn't supply — the runtime errors if
 # agent.env references a ${VAR} that isn't in org_secrets.
