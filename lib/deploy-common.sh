@@ -54,11 +54,13 @@ orb_swarm_create() {
     --argjson org_secrets "$org_secrets" \
     '{name: $name, replicas: $replicas, orb_config: $orb_config, org_secrets: $org_secrets}')
 
+  # Use --data-binary so curl doesn't strip newlines/whitespace from the body
+  # (the build step's cron.json heredoc embeds literal \n chars in JSON strings).
   local resp http_code
-  resp=$(curl -sS -w '\n%{http_code}' -X POST "$ORB_API_BASE/v1/swarms" \
+  resp=$(printf '%s' "$body" | curl -sS -w '\n%{http_code}' -X POST "$ORB_API_BASE/v1/swarms" \
     -H "Authorization: Bearer $ORB_API_KEY" \
     -H "content-type: application/json" \
-    -d "$body")
+    --data-binary @-)
   http_code=$(printf '%s' "$resp" | tail -n1)
   resp=$(printf '%s' "$resp" | sed '$d')
 
@@ -110,10 +112,10 @@ orb_computer_create_and_deploy() {
   local create_body create_resp computer_id http_code
   create_body=$(jq -n --arg name "$name" --argjson rmb "$runtime_mb" --argjson dmb "$disk_mb" \
     '{name: $name, runtime_mb: $rmb, disk_mb: $dmb}')
-  create_resp=$(curl -sS -w '\n%{http_code}' -X POST "$ORB_API_BASE/v1/computers" \
+  create_resp=$(printf '%s' "$create_body" | curl -sS -w '\n%{http_code}' -X POST "$ORB_API_BASE/v1/computers" \
     -H "Authorization: Bearer $ORB_API_KEY" \
     -H "content-type: application/json" \
-    -d "$create_body")
+    --data-binary @-)
   http_code=$(printf '%s' "$create_resp" | tail -n1)
   create_resp=$(printf '%s' "$create_resp" | sed '$d')
 
@@ -128,11 +130,11 @@ orb_computer_create_and_deploy() {
   local deploy_body deploy_resp
   deploy_body=$(jq -n --argjson cfg "$orb_config" --argjson secrets "$org_secrets" \
     '{orb_config: $cfg, org_secrets: $secrets}')
-  deploy_resp=$(curl -sS -w '\n%{http_code}' -X POST \
+  deploy_resp=$(printf '%s' "$deploy_body" | curl -sS -w '\n%{http_code}' -X POST \
     "$ORB_API_BASE/v1/computers/$computer_id/agents" \
     -H "Authorization: Bearer $ORB_API_KEY" \
     -H "content-type: application/json" \
-    -d "$deploy_body")
+    --data-binary @-)
   http_code=$(printf '%s' "$deploy_resp" | tail -n1)
   deploy_resp=$(printf '%s' "$deploy_resp" | sed '$d')
 
