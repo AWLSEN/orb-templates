@@ -72,6 +72,14 @@ print(json.dumps(tomllib.loads(sys.stdin.read())))
 PY
 )
 
+# Strip the auth env var the user didn't supply — the runtime errors if
+# agent.env references a ${VAR} that isn't in org_secrets.
+if [ -n "$CODEX_AUTH_JSON" ]; then
+  TOML_AS_JSON=$(echo "$TOML_AS_JSON" | jq 'del(.agent.env.OPENAI_API_KEY)')
+else
+  TOML_AS_JSON=$(echo "$TOML_AS_JSON" | jq 'del(.agent.env.CODEX_AUTH_JSON)')
+fi
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Compose org_secrets — the runtime resolves ${VAR} in agent.env against this.
 # ──────────────────────────────────────────────────────────────────────────────
