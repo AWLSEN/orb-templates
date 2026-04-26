@@ -1,0 +1,79 @@
+{
+  "name": "clawsweeper",
+  "version": "1",
+  "tagline": "Hourly issue-triage bot for any GitHub repo.",
+  "what_it_does": "Reviews open issues and PRs in a target repo, decides close/keep_open per item with structured reasons (already-implemented, cannot-reproduce, duplicate, not-actionable, stale-old). Conservative confidence gates plus per-item audit trail. 5 isolated workers running in parallel, modulo-partitioned by item number, idle ~99% of the time between hourly review cycles.",
+  "shape": "swarm",
+  "default_replicas": 5,
+  "max_replicas": 100,
+  "upstream_repo": "https://github.com/openclaw/clawsweeper",
+  "required_secrets": [
+    {
+      "name": "ORB_API_KEY",
+      "format": "orb_*",
+      "obtain_at": "https://orbcloud.dev/dashboard/keys",
+      "purpose": "Authenticates with ORB Cloud."
+    },
+    {
+      "name": "GITHUB_TOKEN",
+      "format": "ghp_* or gho_*",
+      "scopes": ["repo:read on TARGET_REPO", "repo:write on REPORT_REPO"],
+      "obtain_at": "https://github.com/settings/tokens",
+      "purpose": "Used by clawsweeper's gh CLI to enumerate issues/PRs and (optionally) write review proposals."
+    }
+  ],
+  "required_one_of": [
+    {
+      "name": "OPENAI_API_KEY",
+      "format": "sk-*",
+      "obtain_at": "https://platform.openai.com/api-keys",
+      "purpose": "Codex CLI in API-key mode. Pay-per-token via your OpenAI account.",
+      "llm_base_url": "https://api.openai.com/v1"
+    },
+    {
+      "name": "CODEX_AUTH_JSON",
+      "format": "JSON contents of ~/.codex/auth.json",
+      "obtain_at": "Run `codex login` locally, then paste ~/.codex/auth.json contents",
+      "purpose": "Codex CLI in ChatGPT-auth mode. Uses your ChatGPT plan tokens.",
+      "llm_base_url": "https://chatgpt.com/backend-api/codex"
+    }
+  ],
+  "required_inputs": [
+    {
+      "name": "TARGET_REPO",
+      "format": "owner/repo",
+      "private_repos_supported": true,
+      "example": "openclaw/openclaw",
+      "purpose": "The GitHub repo whose issues + PRs should be reviewed."
+    }
+  ],
+  "optional_inputs": [
+    {
+      "name": "REPORT_REPO",
+      "format": "owner/repo",
+      "default": "$TARGET_REPO",
+      "purpose": "Where review proposals are committed as items/<n>.md. Defaults to the same repo."
+    },
+    {
+      "name": "REPLICAS",
+      "format": "integer 1..100",
+      "default": 5,
+      "purpose": "Number of parallel review workers. More replicas = more codex calls per hour but bounded by your rate limit."
+    },
+    {
+      "name": "CRON_SCHEDULE",
+      "format": "5-field cron",
+      "default": "17 * * * *",
+      "purpose": "When to fire each hourly review cycle. Default matches upstream clawsweeper."
+    },
+    {
+      "name": "SWARM_NAME",
+      "format": "string, unique within your org",
+      "default": "clawsweeper-${TARGET_REPO_SHORT}",
+      "purpose": "Identifier for this deploy. Used in DELETE /v1/swarms/<name> for teardown."
+    }
+  ],
+  "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/clawsweeper)",
+  "agent_deploy_uri": "https://orbcloud.dev/templates/clawsweeper/template.json",
+  "use_case_page": "https://orbcloud.dev/use-cases/clawsweeper/"
+}

@@ -1,0 +1,26 @@
+From: ORB Cloud template <support@orbcloud.dev>
+Subject: [PATCH] Make TARGET_REPO and REPORT_REPO env-overridable
+
+clawsweeper hardcodes its target and report repos as constants. The ORB
+Cloud deploy template needs them per-deploy without forking, so we read
+them from env vars with the original constants as defaults.
+
+Filed upstream as a PR to openclaw/clawsweeper. Once merged this patch
+becomes a no-op and can be deleted from the template.
+
+---
+ src/clawsweeper.ts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/clawsweeper.ts b/src/clawsweeper.ts
+--- a/src/clawsweeper.ts
++++ b/src/clawsweeper.ts
+@@ -283,8 +283,8 @@ const MAINTAINER_AUTHOR_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR
+ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+-const TARGET_REPO = "openclaw/openclaw";
+-const REPORT_REPO = "openclaw/clawsweeper";
++const TARGET_REPO = process.env.CLAWSWEEPER_TARGET_REPO || "openclaw/openclaw";
++const REPORT_REPO = process.env.CLAWSWEEPER_REPORT_REPO || "openclaw/clawsweeper";
+ const CLAWHUB_URL = "https://clawhub.ai/";
+ const DOCS_URL = "https://docs.openclaw.ai";
+ const FRESH_DAYS = 7;
