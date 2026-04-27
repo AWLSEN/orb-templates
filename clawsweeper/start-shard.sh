@@ -25,9 +25,17 @@ fi
 # ORB_PROXY_URL is injected by the runtime at agent spawn AND on every
 # cron-fired run, e.g. http://10.42.<subnet>.1:10000. Falling back to a
 # bare default would silently bypass the proxy, so we fail loudly instead.
+#
+# Codex has TWO base-url config keys with different meanings:
+#   - openai_base_url   = API-key mode (OPENAI_API_KEY)
+#   - chatgpt_base_url  = ChatGPT-auth mode (CODEX_AUTH_JSON)
+# Setting both ensures the proxy is used regardless of which auth mode
+# the deploy chose. Without chatgpt_base_url, ChatGPT-auth runs go direct
+# to chatgpt.com and silently bypass the proxy.
 : "${ORB_PROXY_URL:?ORB_PROXY_URL not set — runtime must inject it}"
 cat > $HOME/.codex/config.toml <<CONF
 openai_base_url = "${ORB_PROXY_URL}"
+chatgpt_base_url = "${ORB_PROXY_URL}"
 CONF
 
 # ──────────────────────────────────────────────────────────────────────────────
