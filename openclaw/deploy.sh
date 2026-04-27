@@ -75,8 +75,8 @@ RESPONSE=$(orb_swarm_create "$DEPLOY_NAME" 1 "$TOML_AS_JSON" "$ORG_SECRETS")
 
 # Extract the single member's computer ID + subdomain URL.
 SWARM_ID=$(echo "$RESPONSE" | jq -r '.swarm_id')
-COMPUTER_ID=$(echo "$RESPONSE" | jq -r '.members[0].id // empty')
-SUBDOMAIN_URL=$(echo "$RESPONSE" | jq -r '.members[0].url // empty')
+COMPUTER_ID=$(echo "$RESPONSE" | jq -r '.computers[0].id // empty')
+SUBDOMAIN_URL=$(echo "$RESPONSE" | jq -r '"https://" + .computers[0].subdomain + "/"')
 
 if [ -z "$COMPUTER_ID" ]; then
   echo "ERROR: deploy failed — no member returned." >&2
