@@ -1,0 +1,55 @@
+{
+  "$schema": "https://orbcloud.dev/templates/template-manifest.schema.json",
+  "name": "openclaw",
+  "description": "Run your own OpenClaw Gateway on ORB Cloud. Idle = $0, wake on inbound HTTP in <1s, persistent state across sleep. GLM (via Z.AI) is the only LLM provider in Phase 1; channels (Telegram/Discord/Slack) ship in Phase 2.",
+  "shape": "single",
+  "upstream": {
+    "repo": "https://github.com/openclaw/openclaw",
+    "stars_at_template_creation": 365330,
+    "license": "MIT",
+    "homepage": "https://openclaw.ai"
+  },
+  "required_secrets": [
+    {
+      "name": "ORB_API_KEY",
+      "format": "orb_*",
+      "obtain_at": "https://orbcloud.dev/dashboard/keys",
+      "purpose": "Authenticates with ORB Cloud."
+    },
+    {
+      "name": "ZAI_API_KEY",
+      "format": "<32 hex>.<random>",
+      "obtain_at": "https://z.ai/manage-apikey/apikey-list — sign up for the GLM Coding Plan",
+      "purpose": "Z.AI API key. Sent to https://api.z.ai/api/anthropic via ORB's per-computer LLM proxy.",
+      "llm_base_url": "https://api.z.ai/api/anthropic",
+      "orb_proxy_observable": true
+    }
+  ],
+  "required_inputs": [],
+  "optional_inputs": [
+    {
+      "name": "DEPLOY_NAME",
+      "format": "string, unique within your org",
+      "default": "openclaw-<random6>",
+      "purpose": "Identifier for this deploy. Used in DELETE /v1/swarms/<id> for teardown."
+    }
+  ],
+  "exposes": [
+    {
+      "port": 18789,
+      "url_template": "https://<computer-id>.orbcloud.dev/",
+      "kind": "http",
+      "purpose": "OpenClaw Gateway — Control UI + RPC API for messages/sessions/agents."
+    }
+  ],
+  "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/openclaw)",
+  "agent_deploy_uri": "https://orbcloud.dev/templates/openclaw/template.json",
+  "use_case_page": "https://orbcloud.dev/templates/openclaw/",
+  "phase": "1",
+  "phase_2_planned": [
+    "channel pairing (Telegram bot token, Discord bot, Slack OAuth, WhatsApp QR)",
+    "multi-LLM-provider switcher (Anthropic, OpenAI, Z.AI, custom)",
+    "web onboarding form on orbcloud.dev (vs curl-pipe-bash)",
+    "GitHub OAuth signup with free-tier monthly cap"
+  ]
+}
