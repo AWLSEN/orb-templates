@@ -103,6 +103,13 @@ echo "→ report: $REPORT_REPO"
 echo "→ replicas: $REPLICAS"
 echo "→ auth: $AUTH_MODE"
 echo "→ cron: $CRON_SCHEDULE"
+if [ "$AUTH_MODE" = "chatgpt-auth" ]; then
+  echo
+  echo "  note: codex hardcodes the chatgpt-auth backend URL and bypasses ORB's"
+  echo "        LLM proxy. Sleep/wake/cost-per-second still work; the dashboard's"
+  echo "        LLM-call counter will stay at 0. Use OPENAI_API_KEY for full"
+  echo "        observability (see docs/auth-modes.md)."
+fi
 echo
 
 RESPONSE=$(orb_swarm_create "$SWARM_NAME" "$REPLICAS" "$TOML_AS_JSON" "$ORG_SECRETS")

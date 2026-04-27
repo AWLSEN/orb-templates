@@ -28,14 +28,18 @@
       "format": "sk-*",
       "obtain_at": "https://platform.openai.com/api-keys",
       "purpose": "Codex CLI in API-key mode. Pay-per-token via your OpenAI account.",
-      "llm_base_url": "https://api.openai.com/v1"
+      "llm_base_url": "https://api.openai.com/v1",
+      "orb_proxy_observable": true,
+      "recommended": true
     },
     {
       "name": "CODEX_AUTH_JSON",
       "format": "JSON contents of ~/.codex/auth.json",
       "obtain_at": "Run `codex login` locally, then paste ~/.codex/auth.json contents",
       "purpose": "Codex CLI in ChatGPT-auth mode. Uses your ChatGPT plan tokens.",
-      "llm_base_url": "https://chatgpt.com/backend-api/codex"
+      "llm_base_url": "https://chatgpt.com/backend-api/codex",
+      "orb_proxy_observable": false,
+      "orb_proxy_note": "Codex hardcodes its ChatGPT-auth backend URL and ignores both openai_base_url and chatgpt_base_url config options. Traffic goes direct to chatgpt.com, bypassing ORB's LLM proxy. Sleep/wake/cost-per-second still work; LLM-call counter on the dashboard stays at 0."
     }
   ],
   "required_inputs": [
