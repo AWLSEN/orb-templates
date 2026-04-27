@@ -20,10 +20,14 @@ if [ -n "${CODEX_AUTH_JSON:-}" ]; then
   chmod 600 $HOME/.codex/auth.json
 fi
 
-# Point codex at ORB's plaintext LLM proxy regardless of auth mode.
+# Point codex at ORB's per-computer LLM proxy regardless of auth mode.
 # The proxy forwards verbatim to the [llm].base_url set in orb.toml.
-cat > $HOME/.codex/config.toml <<'CONF'
-openai_base_url = "http://127.0.0.1:8080"
+# ORB_PROXY_URL is injected by the runtime at agent spawn AND on every
+# cron-fired run, e.g. http://10.42.<subnet>.1:10000. Falling back to a
+# bare default would silently bypass the proxy, so we fail loudly instead.
+: "${ORB_PROXY_URL:?ORB_PROXY_URL not set — runtime must inject it}"
+cat > $HOME/.codex/config.toml <<CONF
+openai_base_url = "${ORB_PROXY_URL}"
 CONF
 
 # ──────────────────────────────────────────────────────────────────────────────
