@@ -64,7 +64,7 @@ ORG_SECRETS=$(jq -n \
 
 echo "→ deploy:    $DEPLOY_NAME"
 echo "→ provider:  Z.AI (GLM, via Anthropic-compatible endpoint)"
-echo "→ runtime:   2GB RAM, 4GB disk"
+echo "→ runtime:   8GB RAM, 8GB disk (from orb.toml [resources])"
 echo "→ exposes:   port 18789 (OpenClaw Gateway)"
 echo
 
@@ -72,11 +72,12 @@ echo
 # already handles config-upload + build + secrets-persist + subdomain
 # provisioning in one call; reusing it for "deploy one" is the simplest path.
 #
-# 8GB runtime + 8GB disk: openclaw-gateway loads ~35 plugin runtimes
-# (channels, browser, voice, etc.) reaching 1-1.4 GB resident, and CRIU
-# dump needs memory headroom on top of that to walk all pages. With the
-# cloud's default 512 MB cgroup the dump gets OOM-killed mid-flight.
-RESPONSE=$(orb_swarm_create "$DEPLOY_NAME" 1 "$TOML_AS_JSON" "$ORG_SECRETS" 8192 8192)
+# Cgroup runtime/disk are derived from orb.toml's [resources] block by the
+# cloud's swarm_api (commit 50ba724). openclaw-gateway loads ~35 plugin
+# runtimes (channels, browser, voice, etc.) reaching 1-1.4 GB resident,
+# plus CRIU dump's working set on top — so [resources] runtime = "8GB"
+# in orb.toml.tpl gives the cgroup enough headroom for both.
+RESPONSE=$(orb_swarm_create "$DEPLOY_NAME" 1 "$TOML_AS_JSON" "$ORG_SECRETS")
 
 # Extract the single member's computer ID + subdomain URL.
 SWARM_ID=$(echo "$RESPONSE" | jq -r '.swarm_id')

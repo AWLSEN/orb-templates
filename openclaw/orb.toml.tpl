@@ -33,8 +33,8 @@ steps = [
 working_dir = "/agent/code"
 
 [resources]
-runtime = "2GB"
-disk    = "4GB"
+runtime = "8GB"
+disk    = "8GB"
 
 [ports]
 expose = [18789]
