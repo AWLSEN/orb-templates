@@ -71,7 +71,12 @@ echo
 # Single-computer deploy via /v1/swarms with replicas=1. The swarm primitive
 # already handles config-upload + build + secrets-persist + subdomain
 # provisioning in one call; reusing it for "deploy one" is the simplest path.
-RESPONSE=$(orb_swarm_create "$DEPLOY_NAME" 1 "$TOML_AS_JSON" "$ORG_SECRETS")
+#
+# 8GB runtime + 8GB disk: openclaw-gateway loads ~35 plugin runtimes
+# (channels, browser, voice, etc.) reaching 1-1.4 GB resident, and CRIU
+# dump needs memory headroom on top of that to walk all pages. With the
+# cloud's default 512 MB cgroup the dump gets OOM-killed mid-flight.
+RESPONSE=$(orb_swarm_create "$DEPLOY_NAME" 1 "$TOML_AS_JSON" "$ORG_SECRETS" 8192 8192)
 
 # Extract the single member's computer ID + subdomain URL.
 SWARM_ID=$(echo "$RESPONSE" | jq -r '.swarm_id')

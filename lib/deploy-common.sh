@@ -39,20 +39,41 @@ require_one_of() {
 
 # ──────────────────────────────────────────────────────────────────────────────
 # orb_swarm_create — POST to /v1/swarms.
-# Usage: orb_swarm_create <name> <replicas> <orb_config_json> <org_secrets_json>
+# Usage:
+#   orb_swarm_create <name> <replicas> <orb_config_json> <org_secrets_json>
+#   orb_swarm_create <name> <replicas> <orb_config_json> <org_secrets_json> <runtime_mb> <disk_mb>
+#
+# runtime_mb / disk_mb set the cgroup memory + disk quota for each replica's
+# computer. NOTE: these are SEPARATE from orb.toml's [resources] block, which
+# is advisory and does NOT set the cgroup. The cloud's migration default is
+# 512MB / 1024MB — too small for openclaw-shape (Node + 35 plugins → 1GB+
+# resident); explicitly set 8192/8192 for those workloads.
+#
 # Echoes the swarm response JSON to stdout. Exits non-zero on HTTP error.
 # ──────────────────────────────────────────────────────────────────────────────
 
 orb_swarm_create() {
   local name="$1" replicas="$2" orb_config="$3" org_secrets="$4"
+  local runtime_mb="${5:-}" disk_mb="${6:-}"
 
   local body
-  body=$(jq -n \
-    --arg name "$name" \
-    --argjson replicas "$replicas" \
-    --argjson orb_config "$orb_config" \
-    --argjson org_secrets "$org_secrets" \
-    '{name: $name, replicas: $replicas, orb_config: $orb_config, org_secrets: $org_secrets}')
+  if [ -n "$runtime_mb" ] && [ -n "$disk_mb" ]; then
+    body=$(jq -n \
+      --arg name "$name" \
+      --argjson replicas "$replicas" \
+      --argjson rmb "$runtime_mb" \
+      --argjson dmb "$disk_mb" \
+      --argjson orb_config "$orb_config" \
+      --argjson org_secrets "$org_secrets" \
+      '{name: $name, replicas: $replicas, runtime_mb: $rmb, disk_mb: $dmb, orb_config: $orb_config, org_secrets: $org_secrets}')
+  else
+    body=$(jq -n \
+      --arg name "$name" \
+      --argjson replicas "$replicas" \
+      --argjson orb_config "$orb_config" \
+      --argjson org_secrets "$org_secrets" \
+      '{name: $name, replicas: $replicas, orb_config: $orb_config, org_secrets: $org_secrets}')
+  fi
 
   # Use --data-binary so curl doesn't strip newlines/whitespace from the body
   # (the build step's cron.json heredoc embeds literal \n chars in JSON strings).
