@@ -17,7 +17,7 @@ mkdir -p "$HOME/.openclaw"
 # to write auth-profiles.json by hand. Onboard:
 #   - writes ~/.openclaw/agents/main/agent/auth-profiles.json with the key
 #   - writes ~/.openclaw/openclaw.json with the right model + provider config
-#   - sets default model to zai/glm-5.1 (the GLM coding plan flagship)
+#   - sets default model to zai/glm-5.1 (we override below — see GLM-4.7 note)
 if [ ! -f "$HOME/.openclaw/agents/main/agent/auth-profiles.json" ]; then
   echo "=== first run: onboarding for Z.AI GLM Coding Plan ==="
   openclaw onboard \
@@ -31,22 +31,36 @@ if [ ! -f "$HOME/.openclaw/agents/main/agent/auth-profiles.json" ]; then
   # so binding the gateway directly to LAN would EADDRINUSE conflict with
   # socat. Loopback is correct.
 
-  # Override zai.baseUrl from api.z.ai (default) to ORB's per-computer LLM
-  # proxy. The runtime injects ANTHROPIC_BASE_URL but openclaw stores
-  # provider URLs in models.providers.zai.baseUrl — so we patch the json
-  # directly. This routes ALL openclaw LLM traffic through ORB's proxy:
-  # dashboard LLM-call counter ticks, in-flight responses are buffered
-  # across checkpoint, idle agents auto-checkpoint mid-LLM-call.
-  if [ -n "${ORB_PROXY_URL:-}" ]; then
-    python3 - <<PY
+  # Two openclaw.json patches before first gateway start:
+  #
+  # 1. zai.baseUrl → ORB's per-computer LLM proxy. Onboard sets it to
+  #    api.z.ai directly; we point it at the proxy so traffic is observable
+  #    (dashboard counter, checkpoint-buffer-during-LLM-call). Verified live
+  #    with the SIGSTOP+forward+SIGCONT trace.
+  #
+  # 2. agents.defaults.model.primary → zai/glm-4.7 (override onboard's
+  #    glm-5.1 default). Z.AI's GLM Coding Plan applies a per-second
+  #    concurrent-request rate cap to glm-5.1 that openclaw's tight
+  #    retry-on-429 loop trips immediately (verified with direct burst
+  #    tests: 5/8 HTTP 429 with error code 1302). glm-4.7 doesn't get
+  #    rate-capped as aggressively under the same plan tier.
+  python3 - <<'PY'
 import json, os
 p = os.path.expanduser("~/.openclaw/openclaw.json")
 d = json.load(open(p))
-d.setdefault("models", {}).setdefault("providers", {}).setdefault("zai", {})["baseUrl"] = os.environ["ORB_PROXY_URL"]
+
+proxy_url = os.environ.get("ORB_PROXY_URL")
+if proxy_url:
+    d.setdefault("models", {}).setdefault("providers", {}).setdefault("zai", {})["baseUrl"] = proxy_url
+    print(f"  zai.baseUrl → {proxy_url}")
+
+# Override default model from glm-5.1 (rate-capped on burst) → glm-4.7
+d.setdefault("agents", {}).setdefault("defaults", {})["model"] = {"primary": "zai/glm-4.7"}
+d["agents"]["defaults"].setdefault("models", {})["zai/glm-4.7"] = {"alias": "GLM"}
+print("  agents.defaults.model.primary → zai/glm-4.7")
+
 json.dump(d, open(p, "w"), indent=2)
-print(f"  zai.baseUrl → {os.environ['ORB_PROXY_URL']} (ORB LLM proxy)")
 PY
-  fi
 fi
 
 echo "=== openclaw gateway starting ==="
