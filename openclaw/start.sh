@@ -9,6 +9,11 @@
 set -e
 export PATH="/root/.npm-global/bin:/usr/local/bin:/usr/bin:/bin"
 mkdir -p "$HOME/.openclaw"
+# Honors NODE_COMPILE_CACHE in [agent.env] — the cache dir lives on the
+# per-computer ext4 bind (no overlay, no tmpfs shadow), so CRIU pre-dump
+# can resolve openclaw's inotify watch on the cache file. Detail in
+# orb.toml.tpl's NODE_COMPILE_CACHE comment + spec item 3.
+mkdir -p "${NODE_COMPILE_CACHE:-/agent/cache/node}"
 
 : "${ZAI_API_KEY:?ZAI_API_KEY must be set — runtime should inject from org_secrets}"
 

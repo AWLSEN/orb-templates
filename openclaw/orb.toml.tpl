@@ -22,6 +22,15 @@ entry = "/agent/code/start.sh"
 ZAI_API_KEY = "${ZAI_API_KEY}"
 HOME = "/root"
 NODE_ENV = "production"
+# Move Node's V8 compile cache off /tmp. Inside the sandbox, /tmp has a
+# tmpfs mounted on top of an ext4 bind, and Node's `module.enableCompileCache()`
+# (called by openclaw's entry.js) opens a watch on a cache file that ends up
+# on the ext4 lower mount — invisible to CRIU's path resolution because the
+# tmpfs shadows it. CRIU pre-dump then fails with `fsnotify: Can't dump that
+# handle`. Pointing the cache at /agent/cache/node moves the watched inode
+# onto the per-computer ext4 bind, no overlay, no tmpfs shadow — pre-dump
+# resolves cleanly. See runtime/spec/criu-compat-known-issues.md item 3.
+NODE_COMPILE_CACHE = "/agent/cache/node"
 
 [build]
 steps = [
