@@ -105,10 +105,10 @@ echo "→ auth: $AUTH_MODE"
 echo "→ cron: $CRON_SCHEDULE"
 if [ "$AUTH_MODE" = "chatgpt-auth" ]; then
   echo
-  echo "  note: codex hardcodes the chatgpt-auth backend URL and bypasses ORB's"
-  echo "        LLM proxy. Sleep/wake/cost-per-second still work; the dashboard's"
-  echo "        LLM-call counter will stay at 0. Use OPENAI_API_KEY for full"
-  echo "        observability (see docs/auth-modes.md)."
+  echo "  note: whether codex chatgpt-auth flows through ORB's LLM proxy is"
+  echo "        currently unverified — see docs/auth-modes.md. If you need"
+  echo "        guaranteed proxy observability, use OPENAI_API_KEY instead."
+  echo "        Sleep/wake/cost-per-second work in either mode."
 fi
 echo
 

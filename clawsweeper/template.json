@@ -38,8 +38,8 @@
       "obtain_at": "Run `codex login` locally, then paste ~/.codex/auth.json contents",
       "purpose": "Codex CLI in ChatGPT-auth mode. Uses your ChatGPT plan tokens.",
       "llm_base_url": "https://chatgpt.com/backend-api/codex",
-      "orb_proxy_observable": false,
-      "orb_proxy_note": "Codex hardcodes its ChatGPT-auth backend URL and ignores both openai_base_url and chatgpt_base_url config options. Traffic goes direct to chatgpt.com, bypassing ORB's LLM proxy. Sleep/wake/cost-per-second still work; LLM-call counter on the dashboard stays at 0."
+      "orb_proxy_observable": "unverified",
+      "orb_proxy_note": "Whether codex's chatgpt-auth backend URL can be overridden to flow through ORB's LLM proxy is currently unverified end-to-end on this template. Earlier results suggested it bypasses, but a parallel investigation in the OpenClaw template revealed an override path I'd missed there — so the chatgpt-auth bypass conclusion is no longer trusted without re-testing. Sleep/wake/cost-per-second still work either way."
     }
   ],
   "required_inputs": [
