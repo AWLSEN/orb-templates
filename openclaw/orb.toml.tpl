@@ -12,11 +12,14 @@ lang = "binary"
 entry = "/agent/code/start.sh"
 
 [agent.env]
-# Z.AI uses the standard Anthropic SDK env var name. Anthropic SDK reads this
-# and sends it as the x-api-key header. The runtime ALSO injects
-# ANTHROPIC_BASE_URL pointing at our per-computer LLM proxy, which forwards
-# verbatim to [llm] base_url below — so calls are observable by ORB.
-ANTHROPIC_AUTH_TOKEN = "${ZAI_API_KEY}"
+# OpenClaw stores LLM auth in its own profile store at
+# ~/.openclaw/agents/main/agent/auth-profiles.json (written by `openclaw
+# onboard` on first run from start.sh). It does NOT honor standard SDK env
+# vars like ANTHROPIC_AUTH_TOKEN — its provider URLs are hardcoded per
+# auth-choice. Same shape as codex chatgpt-auth: traffic bypasses ORB's LLM
+# proxy. Documented limitation; workload still runs, just no per-call
+# metering on the dashboard.
+ZAI_API_KEY = "${ZAI_API_KEY}"
 HOME = "/root"
 NODE_ENV = "production"
 
@@ -37,5 +40,9 @@ disk    = "4GB"
 expose = [18789]
 
 [llm]
-# GLM coding plan via Z.AI's Anthropic-compatible endpoint.
-base_url = "https://api.z.ai/api/anthropic"
+# OpenClaw uses its own provider URLs (hardcoded per auth-choice) and
+# bypasses ORB's per-computer LLM proxy. This [llm] base_url is therefore
+# unused by OpenClaw itself — but the deploy schema requires it, and any
+# OTHER process inside this computer that respects ANTHROPIC_BASE_URL would
+# correctly route through the proxy to this upstream.
+base_url = "https://api.z.ai/api/coding/paas/v4"

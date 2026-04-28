@@ -1,63 +1,42 @@
 #!/bin/bash
 # OpenClaw Gateway entry point — runs as the agent process inside the ORB
-# sandbox. Spawned once on initial deploy. After this exits or sleeps, ORB's
-# subdomain proxy wakes us on inbound HTTP to <id>.orbcloud.dev:18789.
+# sandbox. Spawned on initial deploy + on every restart after sleep/wake.
+#
+# Idempotent: subsequent runs reuse the auth profile from the first run
+# (~/.openclaw/agents/main/agent/auth-profiles.json) so we don't re-onboard
+# on every wake.
 
 set -e
-
 export PATH="/root/.npm-global/bin:/usr/local/bin:/usr/bin:/bin"
-
-# OpenClaw expects ~/.openclaw/. Pre-create it so first run doesn't race.
 mkdir -p "$HOME/.openclaw"
 
-# Required envvar from agent.env (set by ORB's secret resolver).
-: "${ANTHROPIC_AUTH_TOKEN:?ANTHROPIC_AUTH_TOKEN must be set — runtime should inject from org_secrets}"
+: "${ZAI_API_KEY:?ZAI_API_KEY must be set — runtime should inject from org_secrets}"
 
-# OpenClaw's Anthropic SDK reads ANTHROPIC_BASE_URL (injected by ORB at agent
-# spawn AND on every cron-fired run, value: http://10.42.<subnet>.1:10000).
-# That points at the per-computer LLM proxy, which forwards to [llm].base_url
-# (https://api.z.ai/api/anthropic). All Z.AI traffic flows through ORB's proxy
-# → dashboard LLM-call counter ticks → checkpoint-buffer-during-sleep applies.
-#
-# If for any reason the runtime hasn't set it (e.g. testing outside ORB),
-# fail loudly rather than silently bypass.
-: "${ANTHROPIC_BASE_URL:?ANTHROPIC_BASE_URL not set — the ORB runtime must inject this at agent spawn}"
+# Run onboard non-interactively the first time. The wizard supports
+# --auth-choice zai-coding-global for the GLM Coding Plan, so we don't have
+# to write auth-profiles.json by hand. Onboard:
+#   - writes ~/.openclaw/agents/main/agent/auth-profiles.json with the key
+#   - writes ~/.openclaw/openclaw.json with the right model + provider config
+#   - sets default model to zai/glm-5.1 (the GLM coding plan flagship)
+if [ ! -f "$HOME/.openclaw/agents/main/agent/auth-profiles.json" ]; then
+  echo "=== first run: onboarding for Z.AI GLM Coding Plan ==="
+  openclaw onboard \
+    --non-interactive \
+    --accept-risk \
+    --auth-choice zai-coding-global \
+    --zai-api-key "$ZAI_API_KEY" || true
 
-echo "=== openclaw gateway starting ==="
-echo "    proxy:  $ANTHROPIC_BASE_URL"
-echo "    [llm]:  https://api.z.ai/api/anthropic (set in orb.toml)"
-echo "    started: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-echo "==="
-
-# Seed a minimal openclaw.json so the gateway can start without interactive
-# onboarding. The user can later run `openclaw onboard` via the web terminal
-# at https://api.orbcloud.dev/terminal/<id>?key=... to add channels, skills,
-# etc. — that flow updates the same config.
-if [ ! -f "$HOME/.openclaw/openclaw.json" ]; then
-  cat > "$HOME/.openclaw/openclaw.json" <<'OPENCLAW_JSON'
-{
-  "$schema": "https://openclaw.ai/schemas/openclaw.json",
-  "gateway": {
-    "mode": "local",
-    "bind": "all",
-    "port": 18789,
-    "controlUi": {
-      "allowedOrigins": ["*"]
-    }
-  },
-  "agents": {
-    "main": {
-      "model": {
-        "provider": "anthropic",
-        "id": "claude-sonnet-4"
-      }
-    }
-  }
-}
-OPENCLAW_JSON
+  # Onboard sets gateway.bind=loopback by default — keep that. ORB's port
+  # expose mechanism uses socat on the netns LAN IP, forwarding to loopback,
+  # so binding the gateway directly to LAN would EADDRINUSE conflict with
+  # socat. Loopback is correct.
 fi
 
-# Start the Gateway in foreground (no --install-daemon: there's no systemd
-# inside the ORB sandbox; ORB itself is the daemon manager via idle-detect +
-# wake-on-request).
-exec openclaw gateway --port 18789 --bind 0.0.0.0 --verbose
+echo "=== openclaw gateway starting ==="
+echo "    started: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+echo "    bind:    loopback (socat exposes LAN:18789 → 127.0.0.1:18789)"
+echo "==="
+
+# Gateway in foreground; ORB's idle detector handles sleep, wake-on-request
+# handles wake. No --install-daemon (no systemd in the sandbox).
+exec openclaw gateway --port 18789 --verbose
