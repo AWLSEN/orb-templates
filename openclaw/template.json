@@ -20,8 +20,8 @@
       "name": "ZAI_API_KEY",
       "format": "<32 hex>.<random>",
       "obtain_at": "https://z.ai/manage-apikey/apikey-list — sign up for the GLM Coding Plan",
-      "purpose": "Z.AI API key. Sent to https://api.z.ai/api/anthropic via ORB's per-computer LLM proxy.",
-      "llm_base_url": "https://api.z.ai/api/anthropic",
+      "purpose": "Z.AI API key. Sent to https://api.z.ai/api/coding/paas/v4 (Z.AI's GLM Coding Plan endpoint) via ORB's per-computer LLM proxy.",
+      "llm_base_url": "https://api.z.ai/api/coding/paas/v4",
       "orb_proxy_observable": true
     }
   ],

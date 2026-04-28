@@ -30,6 +30,23 @@ if [ ! -f "$HOME/.openclaw/agents/main/agent/auth-profiles.json" ]; then
   # expose mechanism uses socat on the netns LAN IP, forwarding to loopback,
   # so binding the gateway directly to LAN would EADDRINUSE conflict with
   # socat. Loopback is correct.
+
+  # Override zai.baseUrl from api.z.ai (default) to ORB's per-computer LLM
+  # proxy. The runtime injects ANTHROPIC_BASE_URL but openclaw stores
+  # provider URLs in models.providers.zai.baseUrl — so we patch the json
+  # directly. This routes ALL openclaw LLM traffic through ORB's proxy:
+  # dashboard LLM-call counter ticks, in-flight responses are buffered
+  # across checkpoint, idle agents auto-checkpoint mid-LLM-call.
+  if [ -n "${ORB_PROXY_URL:-}" ]; then
+    python3 - <<PY
+import json, os
+p = os.path.expanduser("~/.openclaw/openclaw.json")
+d = json.load(open(p))
+d.setdefault("models", {}).setdefault("providers", {}).setdefault("zai", {})["baseUrl"] = os.environ["ORB_PROXY_URL"]
+json.dump(d, open(p, "w"), indent=2)
+print(f"  zai.baseUrl → {os.environ['ORB_PROXY_URL']} (ORB LLM proxy)")
+PY
+  fi
 fi
 
 echo "=== openclaw gateway starting ==="

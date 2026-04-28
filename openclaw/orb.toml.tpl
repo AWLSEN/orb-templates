@@ -14,11 +14,11 @@ entry = "/agent/code/start.sh"
 [agent.env]
 # OpenClaw stores LLM auth in its own profile store at
 # ~/.openclaw/agents/main/agent/auth-profiles.json (written by `openclaw
-# onboard` on first run from start.sh). It does NOT honor standard SDK env
-# vars like ANTHROPIC_AUTH_TOKEN — its provider URLs are hardcoded per
-# auth-choice. Same shape as codex chatgpt-auth: traffic bypasses ORB's LLM
-# proxy. Documented limitation; workload still runs, just no per-call
-# metering on the dashboard.
+# onboard` on first run from start.sh). The provider URL is ALSO in
+# openclaw.json at models.providers.zai.baseUrl — start.sh patches it to
+# point at ORB's per-computer LLM proxy. So traffic flows agent → proxy
+# → upstream Z.AI, fully observable on the dashboard. Confirmed live with
+# SIGSTOP-during-checkpoint trace from the runtime.
 ZAI_API_KEY = "${ZAI_API_KEY}"
 HOME = "/root"
 NODE_ENV = "production"
@@ -40,9 +40,8 @@ disk    = "4GB"
 expose = [18789]
 
 [llm]
-# OpenClaw uses its own provider URLs (hardcoded per auth-choice) and
-# bypasses ORB's per-computer LLM proxy. This [llm] base_url is therefore
-# unused by OpenClaw itself — but the deploy schema requires it, and any
-# OTHER process inside this computer that respects ANTHROPIC_BASE_URL would
-# correctly route through the proxy to this upstream.
+# Upstream the per-computer LLM proxy forwards to. OpenClaw's openai-completions
+# client sends `/chat/completions` (no `/v1/` prefix — Z.AI's GLM Coding Plan
+# requires that exact path). Combined: the proxy receives /chat/completions
+# from openclaw and forwards to https://api.z.ai/api/coding/paas/v4/chat/completions.
 base_url = "https://api.z.ai/api/coding/paas/v4"
