@@ -31,7 +31,7 @@ if [ ! -f "$HOME/.openclaw/agents/main/agent/auth-profiles.json" ]; then
   # so binding the gateway directly to LAN would EADDRINUSE conflict with
   # socat. Loopback is correct.
 
-  # Two openclaw.json patches before first gateway start:
+  # Three openclaw.json patches before first gateway start:
   #
   # 1. zai.baseUrl → ORB's per-computer LLM proxy. Onboard sets it to
   #    api.z.ai directly; we point it at the proxy so traffic is observable
@@ -44,6 +44,14 @@ if [ ! -f "$HOME/.openclaw/agents/main/agent/auth-profiles.json" ]; then
   #    retry-on-429 loop trips immediately (verified with direct burst
   #    tests: 5/8 HTTP 429 with error code 1302). glm-4.7 doesn't get
   #    rate-capped as aggressively under the same plan tier.
+  #
+  # 3. gateway.http.endpoints.chatCompletions.enabled = true. Without this,
+  #    every API path returns 404 except the SPA dashboard — there's no way
+  #    to send the gateway a message via curl. We enable the OpenAI-compat
+  #    /v1/chat/completions endpoint by default so deploy.sh's curl example
+  #    works. The gateway's existing token auth (gateway.auth.token, written
+  #    by `openclaw onboard`) gates access; we surface that token in the
+  #    deploy.sh banner so users can authenticate.
   python3 - <<'PY'
 import json, os
 p = os.path.expanduser("~/.openclaw/openclaw.json")
@@ -58,6 +66,14 @@ if proxy_url:
 d.setdefault("agents", {}).setdefault("defaults", {})["model"] = {"primary": "zai/glm-4.7"}
 d["agents"]["defaults"].setdefault("models", {})["zai/glm-4.7"] = {"alias": "GLM"}
 print("  agents.defaults.model.primary → zai/glm-4.7")
+
+# Enable OpenAI-compatible HTTP endpoint (disabled by default in openclaw).
+gw = d.setdefault("gateway", {})
+endpoints = gw.setdefault("http", {}).setdefault("endpoints", {})
+endpoints.setdefault("chatCompletions", {})["enabled"] = True
+endpoints.setdefault("responses", {})["enabled"] = True
+print("  gateway.http.endpoints.chatCompletions.enabled → true")
+print("  gateway.http.endpoints.responses.enabled → true")
 
 json.dump(d, open(p, "w"), indent=2)
 PY
