@@ -33,7 +33,12 @@ steps = [
 working_dir = "/agent/code"
 
 [resources]
-runtime = "8GB"
+# runtime is the soft budget — the cgroup memory.max hard ceiling is set to
+# `runtime × 3` by orb-runtime (see runtime/src/cgroup.rs MEMORY_MULTIPLIER).
+# OpenClaw + ~35 plugin runtimes resident is 1-1.4GB; 2GB declared → 6GB
+# cgroup max gives ample headroom for the CRIU dump's working set on top of
+# resident memory without OOM-killing the agent mid-checkpoint.
+runtime = "2GB"
 disk    = "8GB"
 
 [ports]

@@ -64,7 +64,7 @@ ORG_SECRETS=$(jq -n \
 
 echo "→ deploy:    $DEPLOY_NAME"
 echo "→ provider:  Z.AI (GLM, via Anthropic-compatible endpoint)"
-echo "→ runtime:   8GB RAM, 8GB disk (from orb.toml [resources])"
+echo "→ resources: 2GB RAM, 8GB disk"
 echo "→ exposes:   port 18789 (OpenClaw Gateway)"
 echo
 
@@ -74,9 +74,10 @@ echo
 #
 # Cgroup runtime/disk are derived from orb.toml's [resources] block by the
 # cloud's swarm_api (commit 50ba724). openclaw-gateway loads ~35 plugin
-# runtimes (channels, browser, voice, etc.) reaching 1-1.4 GB resident,
-# plus CRIU dump's working set on top — so [resources] runtime = "8GB"
-# in orb.toml.tpl gives the cgroup enough headroom for both.
+# runtimes (channels, browser, voice, etc.) reaching 1-1.4 GB resident.
+# orb-runtime sets cgroup memory.max = runtime × 3 (MEMORY_MULTIPLIER), so
+# [resources] runtime = "2GB" in orb.toml.tpl yields a 6GB cgroup ceiling —
+# enough headroom for resident + CRIU dump's working set.
 RESPONSE=$(orb_swarm_create "$DEPLOY_NAME" 1 "$TOML_AS_JSON" "$ORG_SECRETS")
 
 # Extract the single member's computer ID + subdomain URL.
