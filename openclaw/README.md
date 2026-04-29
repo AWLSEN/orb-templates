@@ -11,7 +11,7 @@ ORB Cloud charges $0 while the agent is asleep on NVMe; sub-second wake on the n
 | | |
 |---|---|
 | LLM provider | **Z.AI GLM** (via the Anthropic-compatible endpoint at `api.z.ai/api/anthropic`) |
-| Channels | None — interaction is via HTTP at `<id>.orbcloud.dev:18789` |
+| Channels | None — interaction is via HTTP at `https://<computer-id>.orbcloud.dev/` |
 | Onboarding | Auto-config in `start.sh`; user can run `openclaw onboard` later via the web terminal |
 | RAM | 2 GB (raise to 4 GB if you turn on browser-automation skills) |
 | Persistent state | `~/.openclaw/` — survives sleep/wake via CRIU |
@@ -55,20 +55,22 @@ We forward all traffic through to OpenClaw's HTTP server unchanged.)
 ## How LLM traffic flows
 
 ```
-your curl ──→ <id>.orbcloud.dev:443 (Cloudflare)
-           ──→ ORB subdomain proxy (vps-orb)
-           ──→ openclaw gateway:18789 (inside the ORB sandbox)
-           ──→ Anthropic SDK call
-                     │  ANTHROPIC_BASE_URL = http://10.42.<subnet>.1:10000
+your curl ──→ https://<computer-id>.orbcloud.dev/    (your gateway on ORB Cloud)
+           ──→ openclaw gateway                       (running in your computer)
+                     │  the Anthropic SDK is configured to send LLM calls
+                     │  through ORB's per-computer LLM proxy via
+                     │  ANTHROPIC_BASE_URL.
                      ▼
-              ORB LLM proxy (per-computer)
-                     │  forwards verbatim to:
+              ORB LLM proxy
+                     │  forwards verbatim to your configured upstream:
                      ▼
-              https://api.z.ai/api/anthropic (Z.AI GLM)
+              https://api.z.ai/api/anthropic         (Z.AI GLM)
 ```
 
-The Z.AI traffic is **proxy-observable**, so the dashboard's LLM-call counter
-ticks for every call and ORB can buffer in-flight responses across checkpoint.
+LLM traffic flows through the ORB proxy, so the dashboard's call counter
+ticks for every call and ORB can buffer in-flight responses across the
+sleep/wake boundary — your gateway can be checkpointed mid-LLM-call and
+the response is delivered correctly when it wakes.
 
 ## Sleep & wake (the savings story)
 
@@ -76,10 +78,10 @@ After 120 seconds of no inbound HTTP and no agent CPU activity, ORB's idle
 detector demotes the computer to NVMe (~184 MB on disk; full RAM is freed).
 You stop being billed for runtime in that moment.
 
-The next HTTP request to `<id>.orbcloud.dev` triggers wake-on-request: the
-subdomain proxy holds the request, restores the agent in <1s, then forwards
-the request to the now-warm gateway. The caller sees a small first-request
-latency bump and otherwise unchanged behavior.
+The next HTTP request to `<computer-id>.orbcloud.dev` triggers wake-on-request:
+ORB holds the request, restores the agent in <1s, then forwards the request
+to the now-warm gateway. The caller sees a small first-request latency bump
+and otherwise unchanged behavior.
 
 ## Roadmap (Phase 2)
 

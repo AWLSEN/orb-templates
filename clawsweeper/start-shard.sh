@@ -23,8 +23,8 @@ fi
 # Point codex at ORB's per-computer LLM proxy regardless of auth mode.
 # The proxy forwards verbatim to the [llm].base_url set in orb.toml.
 # ORB_PROXY_URL is injected by the runtime at agent spawn AND on every
-# cron-fired run, e.g. http://10.42.<subnet>.1:10000. Falling back to a
-# bare default would silently bypass the proxy, so we fail loudly instead.
+# cron-fired run. Falling back to a bare default would silently bypass
+# the proxy, so we fail loudly instead.
 #
 # Codex has TWO base-url config keys with different meanings:
 #   - openai_base_url   = API-key mode (OPENAI_API_KEY)

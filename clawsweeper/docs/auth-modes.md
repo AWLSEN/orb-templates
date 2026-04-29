@@ -10,9 +10,9 @@ Set `OPENAI_API_KEY=sk-...` in your env. Codex runs in API-key mode.
 - **Billing**: pay-per-token via your OpenAI account. Visible in the OpenAI dashboard.
 - **Setup**: get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys),
   paste into env.
-- **LLM endpoint**: ORB's per-computer LLM proxy at `http://10.42.<subnet>.1:10000`,
-  which forwards to `https://api.openai.com/v1`. Codex respects this via its
-  `openai_base_url` config option.
+- **LLM endpoint**: ORB's per-computer LLM proxy (injected via the
+  `OPENAI_BASE_URL` env var), which forwards to `https://api.openai.com/v1`.
+  Codex respects this via its `openai_base_url` config option.
 - **ORB observability**: ✅ proxy sees every call; LLM-call counter on the dashboard
   ticks; in-flight responses are buffered across checkpoint/restore.
 
