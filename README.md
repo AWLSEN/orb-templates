@@ -22,6 +22,8 @@ Same `POST /v1/swarms` underneath. Same outcome.
 | Template | What it deploys | Replicas | LLM | Status |
 |---|---|---|---|---|
 | [`clawsweeper/`](./clawsweeper/) | Hourly issue-triage bot for any GitHub repo | 5 | Codex (OpenAI API key or ChatGPT auth) | shipped |
+| [`openclaw/`](./openclaw/) | OpenClaw Gateway, idle-free, wake-on-HTTP | 1 | Z.AI GLM Coding Plan | shipped |
+| [`openclaw-openrouter/`](./openclaw-openrouter/) | Same OpenClaw Gateway, any model in [OpenRouter](https://openrouter.ai/models)'s catalog | 1 | OpenRouter (model selectable via `OPENROUTER_MODEL`) | shipped |
 
 More on the way.
 

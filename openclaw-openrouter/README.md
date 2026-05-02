@@ -20,11 +20,8 @@ For the GLM-only variant (cheaper if you already have a Z.AI GLM Coding Plan key
 ## Deploy
 
 ```bash
-export ORB_API_KEY=orb_...                      # from https://orbcloud.dev/dashboard/keys
+export ORB_API_KEY=orb_...                       # from https://orbcloud.dev/dashboard/keys
 export OPENROUTER_API_KEY=sk-or-v1-...           # from https://openrouter.ai/keys
-
-# Optional — pin a specific model. Omit to keep openclaw's wizard default.
-export OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
 
 bash <(curl -fsSL https://orbcloud.dev/templates/openclaw-openrouter)
 ```
@@ -37,6 +34,13 @@ Deploy returns:
 First deploy takes ~30–60s (npm install of `openclaw` is the long pole). Subsequent wake-on-request is <1s (incremental CRIU restore).
 
 ## Picking a model
+
+By default, `openclaw onboard`'s wizard picks a sensible OpenRouter model for you. To pin a specific one, export `OPENROUTER_MODEL` before running the deploy command:
+
+```bash
+export OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+bash <(curl -fsSL https://orbcloud.dev/templates/openclaw-openrouter)
+```
 
 `OPENROUTER_MODEL` accepts any model slug from <https://openrouter.ai/models>. A few common picks:
 
