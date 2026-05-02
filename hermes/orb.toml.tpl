@@ -24,26 +24,26 @@ HERMES_HOME = "/root/.hermes"
 GLM_API_KEY = "${GLM_API_KEY}"
 
 [build]
-# Hermes ships a heavy install (uv + Python deps + venv). Slim extras for
-# v0: messaging (Telegram webhooks + Discord/Slack libs we don't yet use),
-# cron, cli, pty, mcp. Skip voice (faster-whisper, ctranslate2 — wheel-only,
-# slow), web (dashboard SPA — not needed for v0), [all] (pulls Playwright +
-# Chromium — separate investigation, see runtime/spec/idle-sleep.md:101).
+# Hermes is a heavy install. Slim extras for v0: messaging (Telegram
+# webhooks + Discord/Slack libs we don't yet use), cron, cli, pty, mcp.
+# Skip voice (faster-whisper / ctranslate2 wheel-only deps), web
+# (dashboard SPA), and [all] (pulls Playwright + Chromium — separate
+# investigation, see runtime/spec/idle-sleep.md:101).
+#
+# We install with `pip install --break-system-packages` (matches the
+# clawsweeper pattern) rather than uv — the uv installer needs awk
+# which isn't in the base sandbox, and hermes-agent isn't on PyPI yet
+# so we install from a shallow git clone.
 steps = [
   "mkdir -p /agent/code",
   "curl -fsSL https://raw.githubusercontent.com/AWLSEN/orb-templates/main/hermes/start.sh -o /agent/code/start.sh",
   "curl -fsSL https://raw.githubusercontent.com/AWLSEN/orb-templates/main/hermes/setup-tg.sh -o /usr/local/bin/hermes-setup-tg",
   "chmod +x /agent/code/start.sh /usr/local/bin/hermes-setup-tg",
-  "curl -fsSL https://astral.sh/uv/install.sh | sh",
-  "ln -sf /root/.local/bin/uv /usr/local/bin/uv",
-  "ln -sf /root/.local/bin/uvx /usr/local/bin/uvx",
   "git clone --depth=1 https://github.com/NousResearch/hermes-agent /opt/hermes",
-  "cd /opt/hermes && uv venv",
-  "cd /opt/hermes && uv pip install -e '.[messaging,cron,cli,pty,mcp]'",
-  "ln -sf /opt/hermes/.venv/bin/hermes /usr/local/bin/hermes",
+  "python3 -m pip install --break-system-packages -e '/opt/hermes[messaging,cron,cli,pty,mcp]'",
+  "command -v hermes && hermes --version || true",
   "mkdir -p /root/.hermes",
   "cat > /root/.hermes/config.yaml <<'YAML'\nmodel: 'zai:glm-4.7'\nproviders:\n  zai:\n    base_url: 'https://api.z.ai/api/coding/paas/v4'\ntoolsets: ['hermes-cli']\nYAML",
-  "hermes --version || true",
 ]
 working_dir = "/agent/code"
 
