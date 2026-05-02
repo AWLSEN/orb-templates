@@ -21,12 +21,6 @@
       "format": "bu_*",
       "obtain_at": "https://cloud.browser-use.com/new-api-key",
       "purpose": "Browser Use Cloud key. Free tier gives 3 concurrent browsers + proxies + CAPTCHA solving. browser_keeper.py uses it to maintain a long-lived browser session bound to a fresh per-deploy profile."
-    },
-    {
-      "name": "TG_BOT_TOKEN",
-      "format": "<digits>:<random>",
-      "obtain_at": "https://t.me/BotFather — /newbot",
-      "purpose": "Telegram bot token. The deploy script generates a TG_SETUP_TOKEN and prints a t.me/<bot>?start=<token> deeplink — first chat to redeem binds the bot, subsequent chats are silently dropped (bux's first-chat-wins anti-hijack model)."
     }
   ],
   "required_inputs": [],
@@ -48,7 +42,7 @@
   "post_deploy_steps": [
     "Open https://api.orbcloud.dev/terminal/<computer-id>?key=$ORB_API_KEY in your browser",
     "Run `sudo -iu bux && claude /login` to authenticate Claude Code (Anthropic API key OR Claude Max OAuth)",
-    "Tap the Telegram deeplink printed by deploy.sh — first chat to redeem binds the bot"
+    "Run `bux-setup-tg` (interactive wizard) to create + register a Telegram bot via @BotFather and bind your chat — the supervisor in start.sh picks up the new config within 5 seconds"
   ],
   "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/bux)",
   "agent_deploy_uri": "https://orbcloud.dev/templates/bux/template.json",

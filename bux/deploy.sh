@@ -1,16 +1,17 @@
 #!/bin/bash
 # bux deploy.sh — provisions ONE ORB Cloud computer running the bux
-# Telegram bot + Browser Use Cloud browser combo, exposed via the
-# Telegram side (no public HTTP).
+# Telegram bot + Browser Use Cloud browser combo.
 #
 # Hosted at https://orbcloud.dev/templates/bux for curl-pipe-bash:
 #
 #     bash <(curl -fsSL https://orbcloud.dev/templates/bux)
 #
 # v0 scope: faithful port of upstream bux. Long-poll Telegram, BU Cloud
-# browser, Anthropic Claude Code via `claude /login` post-deploy. Pinned
-# in RAM (sleep = "never") because polling + keeper rotation block the
-# idle detector — see orb.toml.tpl for the rationale and the v0.5 plan.
+# browser, Anthropic Claude Code via `claude /login` post-deploy.
+#
+# Telegram bot is configured POST-DEPLOY via the in-sandbox wizard
+# (`bux-setup-tg`), so users never need to visit @BotFather before
+# running this script. Only ORB and Browser Use keys are required upfront.
 
 set -e
 set -u
@@ -28,7 +29,7 @@ source "$LIB_TMP/lib.sh"
 # Inputs (env vars)
 # ──────────────────────────────────────────────────────────────────────────────
 
-require_env ORB_API_KEY BROWSER_USE_API_KEY TG_BOT_TOKEN
+require_env ORB_API_KEY BROWSER_USE_API_KEY
 
 # Optional reuse: if BUX_PROFILE_ID is already set, we'll skip profile creation
 # and reuse it. Otherwise deploy.sh asks BU to create a fresh profile per deploy
@@ -38,11 +39,6 @@ BUX_PROFILE_ID="${BUX_PROFILE_ID:-}"
 # Random 6-char suffix so successive deploys don't collide on org-unique name.
 SUFFIX=$(tr -dc 'a-z0-9' </dev/urandom | head -c 6)
 DEPLOY_NAME="${DEPLOY_NAME:-bux-${SUFFIX}}"
-
-# Deeplink-based first-chat binding token. bux's telegram_bot.py reads this
-# from /etc/bux/tg.env and accepts whichever Telegram chat redeems
-# `/start <TG_SETUP_TOKEN>` first; subsequent chats are silently dropped.
-TG_SETUP_TOKEN=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Auto-create a Browser Use Cloud profile (one per deploy, by default).
@@ -63,14 +59,12 @@ if [ -z "$BUX_PROFILE_ID" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Render orb.toml from the template — fetch the .tpl, no substitutions needed
-# (everything that varies is a ${VAR} secret reference resolved at deploy time
-# by the cloud, not template-rendered).
+# Render orb.toml from the template — fetch the .tpl, runtime resolves ${VAR}
+# in agent.env against org_secrets at deploy time.
 # ──────────────────────────────────────────────────────────────────────────────
 
 ORB_TOML=$(curl -fsSL "$TEMPLATE_BASE/orb.toml.tpl")
 
-# Convert TOML → JSON for the API body (the runtime accepts JSON for orb_config).
 TOML_AS_JSON=$(printf '%s' "$ORB_TOML" | python3 -c '
 import json, sys
 try:
@@ -80,20 +74,12 @@ except ImportError:
 print(json.dumps(tomllib.loads(sys.stdin.read())))
 ')
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Compose org_secrets — runtime resolves ${VAR} in agent.env against this.
-# ──────────────────────────────────────────────────────────────────────────────
-
 ORG_SECRETS=$(jq -n \
   --arg bu_key "$BROWSER_USE_API_KEY" \
   --arg profile "$BUX_PROFILE_ID" \
-  --arg tg_token "$TG_BOT_TOKEN" \
-  --arg setup_token "$TG_SETUP_TOKEN" \
   '{
     BROWSER_USE_API_KEY: $bu_key,
-    BUX_PROFILE_ID: $profile,
-    TG_BOT_TOKEN: $tg_token,
-    TG_SETUP_TOKEN: $setup_token
+    BUX_PROFILE_ID: $profile
    }')
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -101,20 +87,15 @@ ORG_SECRETS=$(jq -n \
 # ──────────────────────────────────────────────────────────────────────────────
 
 echo "→ deploy:    $DEPLOY_NAME"
-echo "→ provider:  Browser Use Cloud + Anthropic (via claude /login post-deploy)"
+echo "→ provider:  Browser Use Cloud + Anthropic (claude /login post-deploy)"
 echo "→ resources: 4GB RAM, 8GB disk"
-echo "→ exposes:   none (Telegram is outbound long-poll)"
+echo "→ telegram:  not yet configured — set up via bux-setup-tg post-deploy"
 echo
 
-# Single-computer deploy via /v1/swarms with replicas=1. Pass explicit
-# runtime_mb/disk_mb (4096/8192) to override the migration default of
-# 512/1024 — bux's claude + node + python footprint exceeds the default.
 RESPONSE=$(orb_swarm_create "$DEPLOY_NAME" 1 "$TOML_AS_JSON" "$ORG_SECRETS" 4096 8192)
 
-# Extract the single member's computer ID.
 SWARM_ID=$(echo "$RESPONSE" | jq -r '.swarm_id')
 COMPUTER_ID=$(echo "$RESPONSE" | jq -r '.computers[0].id // empty')
-SUBDOMAIN_URL=$(echo "$RESPONSE" | jq -r '"https://" + .computers[0].subdomain + "/"')
 
 if [ -z "$COMPUTER_ID" ]; then
   echo "ERROR: deploy failed — no member returned." >&2
@@ -124,64 +105,43 @@ fi
 
 SHORT_ID=$(echo "$COMPUTER_ID" | cut -c1-8)
 
-# Resolve the bot username so we can render a working deeplink.
-BOT_INFO=$(curl -sS --max-time 10 "https://api.telegram.org/bot${TG_BOT_TOKEN}/getMe" 2>/dev/null || echo '{}')
-BOT_USERNAME=$(echo "$BOT_INFO" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("result",{}).get("username",""))' 2>/dev/null || echo '')
-if [ -n "$BOT_USERNAME" ]; then
-  DEEPLINK="https://t.me/${BOT_USERNAME}?start=${TG_SETUP_TOKEN}"
-else
-  DEEPLINK="(could not resolve bot username — check TG_BOT_TOKEN; fall back to messaging the bot manually with: /start ${TG_SETUP_TOKEN})"
-fi
-
 cat <<DEPLOYED
 
 ✓ deployed.
 
   Computer:     $COMPUTER_ID  (short: $SHORT_ID)
   Swarm:        $SWARM_ID
-  Subdomain:    $SUBDOMAIN_URL  (no HTTP gateway — see "talk to your bot")
   BU profile:   $BUX_PROFILE_ID
 
-  First boot takes ~2–4 minutes (apt + npm install + node modules build).
-  After that, browser_keeper warms a BU session in ~10s.
+  First boot takes ~2–4 minutes (apt + nodejs + npm + python deps).
+  Once browser_keeper.py is up, /home/bux/.claude/browser.env appears.
 
 ──────────────────────────────────────────────────────────────────────────────
-  next steps — in this exact order
+  next steps — open the ORB web terminal and run two commands
 ──────────────────────────────────────────────────────────────────────────────
 
-  1. Open the ORB web terminal so you can complete \`claude /login\`:
+  Terminal URL (paste your ORB_API_KEY when the page asks):
 
-       https://api.orbcloud.dev/terminal/$COMPUTER_ID?key=\$ORB_API_KEY
+      https://api.orbcloud.dev/terminal/$COMPUTER_ID?key=\$ORB_API_KEY
 
-     (paste your ORB_API_KEY when the page asks)
+  Then in the terminal:
 
-  2. In that terminal, become the bux user and authenticate Claude Code:
+      sudo -iu bux
+      claude /login                 # OAuth in your laptop browser → paste code
 
-       sudo -iu bux
-       claude /login
+      exit                          # back to root
 
-     OAuth opens in your laptop browser; paste the resulting code back into
-     the terminal. After this, claude reuses the saved auth on every wake.
+      bux-setup-tg                  # interactive Telegram bot setup wizard
 
-  3. Bind the Telegram bot. Open this link on your phone (or anywhere
-     Telegram is signed in) and tap "start":
-
-       $DEEPLINK
-
-     The first chat to redeem this link binds the bot. Subsequent chats
-     are silently ignored — first-chat-wins is bux's anti-hijack model.
-
-  4. Text your bot. Try:
-
-       you: hi
-       bot: 🔒 This bot is now locked to this chat only.
-       you: visit https://browser-use.com and tell me the page title
+  bux-setup-tg walks you through @BotFather, captures the bot token,
+  prints the deeplink to bind your chat. The supervisor picks up the
+  config on its next 5-second tick — no manual restart needed.
 
 ──────────────────────────────────────────────────────────────────────────────
 
-  Logs (tail from the ORB web terminal):
+  Logs (tail from the web terminal):
     tail -f /var/log/bux/keeper.log     # browser session lifecycle
-    tail -f /var/log/bux/tg.log         # Telegram bot
+    tail -f /var/log/bux/tg.log         # Telegram bot (after setup)
 
   Tear down:
     curl -X DELETE -H "Authorization: Bearer \$ORB_API_KEY" \\

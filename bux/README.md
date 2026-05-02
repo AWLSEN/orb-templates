@@ -13,49 +13,56 @@ Self-host [bux](https://github.com/browser-use/bux) — a 24/7 Claude Code agent
 
 ## Deploy
 
+Only **two** keys upfront — no Telegram setup required before deploy:
+
 ```bash
-export ORB_API_KEY=orb_...                                         # https://orbcloud.dev/dashboard/keys
-export BROWSER_USE_API_KEY=bu_...                                  # https://cloud.browser-use.com/new-api-key
-export TG_BOT_TOKEN=1234567890:ABCdef...                           # https://t.me/BotFather (/newbot)
+export ORB_API_KEY=orb_...               # https://orbcloud.dev/dashboard/keys
+export BROWSER_USE_API_KEY=bu_...        # https://cloud.browser-use.com/new-api-key
 
 bash <(curl -fsSL https://orbcloud.dev/templates/bux)
 ```
 
 Deploy returns:
-- The computer ID + ORB web terminal URL (for `claude /login`)
-- A `t.me/<bot>?start=<token>` deeplink (first chat to tap "start" binds the bot)
+- The computer ID + ORB web terminal URL
 - The teardown command
 
-First boot takes ~2–4 minutes (apt + node + npm + python deps). After that, browser_keeper warms a Browser Use Cloud session in ~10s.
+First boot takes ~2–4 minutes (apt + node + npm + python deps). After that, `browser_keeper.py` warms a Browser Use Cloud session in ~10s. The Telegram bot waits — `start.sh` runs a supervisor that polls every 5s for `/etc/bux/tg.env` to appear; until then only the keeper is running.
 
 ## Post-deploy, in this order
 
-### 1. Authenticate Claude Code
-
-Open the web terminal URL printed by `deploy.sh`:
+Open the web terminal printed by `deploy.sh`:
 
 ```
 https://api.orbcloud.dev/terminal/<computer-id>?key=$ORB_API_KEY
 ```
 
-In that terminal:
+### 1. Authenticate Claude Code
 
 ```bash
 sudo -iu bux
 claude /login
 ```
 
-OAuth opens in your laptop browser; paste the resulting code back into the terminal. Claude saves the auth at `/home/bux/.claude/` — it's preserved across reboots, sleep/wake (when v0.5 lands), and re-deploys (as long as you don't delete the computer).
+OAuth opens in your laptop browser; paste the resulting code back into the terminal. Claude saves the auth at `/home/bux/.claude/` — preserved across reboots, sleep/wake (when v0.5 lands), and re-deploys (as long as you don't delete the computer).
 
-### 2. Bind the Telegram bot
+### 2. Set up the Telegram bot
 
-Tap the `t.me/<bot>?start=<token>` deeplink that `deploy.sh` printed. Send any message — the bot replies:
+Back as root (`exit` from the bux user shell), run the wizard:
 
+```bash
+bux-setup-tg
 ```
-🔒 This bot is now locked to this chat only.
-```
 
-From this point on, only your chat can send messages to the bot. Anyone else who finds the bot username gets ignored.
+The wizard:
+- Walks you through `@BotFather` → `/newbot` (one minute on Telegram)
+- Captures the bot token, validates it via `getMe`
+- Generates a one-shot setup token
+- Writes `/etc/bux/tg.env` atomically
+- Prints a `t.me/<your-bot>?start=<token>` deeplink
+
+The supervisor in `start.sh` picks up the env file on its next 5-second tick and starts `telegram_bot.py` automatically. Tail `/var/log/bux/tg.log` to confirm.
+
+Then tap the deeplink. The first chat to redeem it binds the bot — subsequent chats from anyone else are silently ignored (bux's first-chat-wins anti-hijack model).
 
 ### 3. Text your agent
 
