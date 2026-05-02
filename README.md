@@ -24,6 +24,7 @@ Same `POST /v1/swarms` underneath. Same outcome.
 | [`clawsweeper/`](./clawsweeper/) | Hourly issue-triage bot for any GitHub repo | 5 | Codex (OpenAI API key or ChatGPT auth) | shipped |
 | [`openclaw/`](./openclaw/) | OpenClaw Gateway, idle-free, wake-on-HTTP | 1 | Z.AI GLM Coding Plan | shipped |
 | [`openclaw-openrouter/`](./openclaw-openrouter/) | Same OpenClaw Gateway, any model in [OpenRouter](https://openrouter.ai/models)'s catalog | 1 | OpenRouter (model selectable via `OPENROUTER_MODEL`) | shipped |
+| [`bux/`](./bux/) | [Browser Use Box](https://github.com/browser-use/bux) — 24/7 Claude Code agent + Browser Use Cloud + Telegram bot | 1 | Anthropic (`claude /login` post-deploy) | v0 (pinned, sleep=never; webhook in v0.5) |
 
 More on the way.
 

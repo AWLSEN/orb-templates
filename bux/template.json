@@ -1,0 +1,62 @@
+{
+  "$schema": "https://orbcloud.dev/templates/template-manifest.schema.json",
+  "name": "bux",
+  "description": "Run your own bux (Browser Use Box) on ORB Cloud — a 24/7 Claude Code agent with a real browser, texted via Telegram. Browser runs on Browser Use Cloud (off-box) so CRIU can checkpoint your agent cleanly. v0 is pinned in RAM (sleep = \"never\"); v0.5 swaps Telegram polling for webhook mode to realize ORB's $0-idle savings story.",
+  "shape": "single",
+  "upstream": {
+    "repo": "https://github.com/browser-use/bux",
+    "stars_at_template_creation": 291,
+    "license": "MIT",
+    "homepage": "https://github.com/browser-use/bux"
+  },
+  "required_secrets": [
+    {
+      "name": "ORB_API_KEY",
+      "format": "orb_*",
+      "obtain_at": "https://orbcloud.dev/dashboard/keys",
+      "purpose": "Authenticates with ORB Cloud."
+    },
+    {
+      "name": "BROWSER_USE_API_KEY",
+      "format": "bu_*",
+      "obtain_at": "https://cloud.browser-use.com/new-api-key",
+      "purpose": "Browser Use Cloud key. Free tier gives 3 concurrent browsers + proxies + CAPTCHA solving. browser_keeper.py uses it to maintain a long-lived browser session bound to a fresh per-deploy profile."
+    },
+    {
+      "name": "TG_BOT_TOKEN",
+      "format": "<digits>:<random>",
+      "obtain_at": "https://t.me/BotFather — /newbot",
+      "purpose": "Telegram bot token. The deploy script generates a TG_SETUP_TOKEN and prints a t.me/<bot>?start=<token> deeplink — first chat to redeem binds the bot, subsequent chats are silently dropped (bux's first-chat-wins anti-hijack model)."
+    }
+  ],
+  "required_inputs": [],
+  "optional_inputs": [
+    {
+      "name": "BUX_PROFILE_ID",
+      "format": "UUID",
+      "default": "(auto-created per deploy via POST /api/v3/profiles)",
+      "purpose": "Reuse an existing BU Cloud profile (cookies, logins, cache). Leave unset for a fresh profile per deploy — usually what you want."
+    },
+    {
+      "name": "DEPLOY_NAME",
+      "format": "string, unique within your org",
+      "default": "bux-<random6>",
+      "purpose": "Identifier for this deploy. Used in DELETE /v1/swarms/<id> for teardown."
+    }
+  ],
+  "exposes": [],
+  "post_deploy_steps": [
+    "Open https://api.orbcloud.dev/terminal/<computer-id>?key=$ORB_API_KEY in your browser",
+    "Run `sudo -iu bux && claude /login` to authenticate Claude Code (Anthropic API key OR Claude Max OAuth)",
+    "Tap the Telegram deeplink printed by deploy.sh — first chat to redeem binds the bot"
+  ],
+  "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/bux)",
+  "agent_deploy_uri": "https://orbcloud.dev/templates/bux/template.json",
+  "use_case_page": "https://orbcloud.dev/templates/bux/",
+  "phase": "0",
+  "phase_0_5_planned": [
+    "Telegram webhook mode (replaces long-poll, enables sleep = \"auto\")",
+    "browser_keeper.py passive-sleep loop (epoll/select instead of clock_nanosleep)",
+    "ORB_COMPUTER_ID env var injection so start.sh can call setWebhook against its own subdomain"
+  ]
+}
