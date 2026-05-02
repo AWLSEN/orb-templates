@@ -1,0 +1,61 @@
+{
+  "$schema": "https://orbcloud.dev/templates/template-manifest.schema.json",
+  "name": "openclaw-openrouter",
+  "description": "Run your own OpenClaw Gateway on ORB Cloud, backed by OpenRouter so you can pick any model in the OpenRouter catalog (Anthropic, OpenAI, Google, Meta, Mistral, DeepSeek, etc.) via OPENROUTER_MODEL. Idle = $0, wake on inbound HTTP in <1s, persistent state across sleep.",
+  "shape": "single",
+  "upstream": {
+    "repo": "https://github.com/openclaw/openclaw",
+    "stars_at_template_creation": 365330,
+    "license": "MIT",
+    "homepage": "https://openclaw.ai"
+  },
+  "required_secrets": [
+    {
+      "name": "ORB_API_KEY",
+      "format": "orb_*",
+      "obtain_at": "https://orbcloud.dev/dashboard/keys",
+      "purpose": "Authenticates with ORB Cloud."
+    },
+    {
+      "name": "OPENROUTER_API_KEY",
+      "format": "sk-or-v1-<random>",
+      "obtain_at": "https://openrouter.ai/keys",
+      "purpose": "OpenRouter API key. Sent to https://openrouter.ai/api/v1 via ORB's per-computer LLM proxy.",
+      "llm_base_url": "https://openrouter.ai/api/v1",
+      "orb_proxy_observable": true
+    }
+  ],
+  "required_inputs": [],
+  "optional_inputs": [
+    {
+      "name": "OPENROUTER_MODEL",
+      "format": "OpenRouter model slug, e.g. \"anthropic/claude-sonnet-4.5\", \"openai/gpt-5\", \"google/gemini-2.5-pro\"",
+      "default": "(whatever openclaw onboard's wizard picks for the openrouter provider)",
+      "purpose": "Pin a specific OpenRouter model as the agent's primary. Leave unset to use the wizard default."
+    },
+    {
+      "name": "DEPLOY_NAME",
+      "format": "string, unique within your org",
+      "default": "openclaw-or-<random6>",
+      "purpose": "Identifier for this deploy. Used in DELETE /v1/swarms/<id> for teardown."
+    }
+  ],
+  "exposes": [
+    {
+      "port": 18789,
+      "url_template": "https://<computer-id>.orbcloud.dev/",
+      "kind": "http",
+      "purpose": "OpenClaw Gateway — Control UI + RPC API for messages/sessions/agents."
+    }
+  ],
+  "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/openclaw-openrouter)",
+  "agent_deploy_uri": "https://orbcloud.dev/templates/openclaw-openrouter/template.json",
+  "use_case_page": "https://orbcloud.dev/templates/openclaw-openrouter/",
+  "siblings": [
+    {
+      "name": "openclaw",
+      "description": "Same gateway, locked to Z.AI's GLM Coding Plan as the only LLM upstream — cheaper if you already have a GLM Coding Plan key and don't need model variety.",
+      "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/openclaw)"
+    }
+  ]
+}
