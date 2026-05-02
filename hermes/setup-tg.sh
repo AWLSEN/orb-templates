@@ -62,8 +62,15 @@ if [ -z "$USERNAME" ]; then
 fi
 echo "  ${green}✓ token valid, bot is @${USERNAME}${reset}"
 
-# Confirm or override the subdomain.
-if [ -z "$SUBDOMAIN_URL" ]; then
+# Confirm or override the subdomain. Auto-detected value can be wrong
+# in some sandbox configurations (UTS namespace timing — see start.sh
+# fix), so we validate the shape and re-prompt if it doesn't match
+# the *.orbcloud.dev pattern.
+if ! printf '%s' "$SUBDOMAIN_URL" | grep -Eq '^https://[a-f0-9]{8}\.orbcloud\.dev$'; then
+  if [ -n "$SUBDOMAIN_URL" ]; then
+    echo "  ${red}auto-detected ORB_SUBDOMAIN_URL=${SUBDOMAIN_URL} doesn't match expected shape${reset}"
+    echo "  ${dim}(expected: https://<8-hex-chars>.orbcloud.dev — first 8 chars of your computer UUID)${reset}"
+  fi
   printf "\n  ${bold}ORB subdomain URL${reset} (e.g. https://abc12345.orbcloud.dev): "
   read -r SUBDOMAIN_URL
   SUBDOMAIN_URL="${SUBDOMAIN_URL%/}"
