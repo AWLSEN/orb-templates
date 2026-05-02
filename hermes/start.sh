@@ -26,15 +26,25 @@ fi
 
 # ── 2. Auto-detect this computer's subdomain ──────────────────────────────
 # Telegram webhook URL needs to be HTTPS to a publicly reachable URL. ORB's
-# subdomain proxy fronts every computer at https://<short-id>.orbcloud.dev,
-# where <short-id> is the first 8 chars of the computer UUID. The sandbox
-# hostname is set by the runtime to the short ID, so we read it cheaply.
-SHORT_ID=$(hostname 2>/dev/null | tr -d '\n')
-if [ -n "$SHORT_ID" ]; then
+# subdomain proxy fronts every computer at https://<short-id>.orbcloud.dev
+# (where <short-id> is the first 8 chars of the computer UUID).
+#
+# The runtime sets /etc/hostname to "orb-<short-id>" when it builds the
+# sandbox. We read that file directly — the `hostname` syscall isn't reliable
+# inside the namespace (it can leak the host bare metal's hostname when the
+# UTS namespace isn't isolated at agent-process spawn time).
+SHORT_ID=""
+if [ -r /etc/hostname ]; then
+  RAW=$(cat /etc/hostname 2>/dev/null | tr -d '\n')
+  SHORT_ID="${RAW#orb-}"
+fi
+if [ -n "$SHORT_ID" ] && [ "$SHORT_ID" != "$RAW" ]; then
+  # SHORT_ID was actually stripped of the orb- prefix → looks valid.
   ORB_SUBDOMAIN_URL="https://${SHORT_ID}.orbcloud.dev"
-  if ! grep -q '^ORB_SUBDOMAIN_URL=' "$HERMES_HOME/.env" 2>/dev/null; then
-    echo "ORB_SUBDOMAIN_URL=${ORB_SUBDOMAIN_URL}" >> "$HERMES_HOME/.env"
-  fi
+  # Replace any existing ORB_SUBDOMAIN_URL line (in case a prior boot wrote
+  # a wrong value, e.g. from a hostname-syscall leak).
+  sed -i '/^ORB_SUBDOMAIN_URL=/d' "$HERMES_HOME/.env" 2>/dev/null || true
+  echo "ORB_SUBDOMAIN_URL=${ORB_SUBDOMAIN_URL}" >> "$HERMES_HOME/.env"
 fi
 
 echo "=== hermes supervisor starting ==="
