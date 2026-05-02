@@ -1,0 +1,61 @@
+{
+  "$schema": "https://orbcloud.dev/templates/template-manifest.schema.json",
+  "name": "hermes",
+  "description": "Run NousResearch's Hermes Agent on ORB Cloud, backed by Z.AI's GLM Coding Plan. Hermes natively supports Telegram webhook mode, so the agent sleeps between messages and wakes in <1s on the next inbound — full ORB savings story applies. Telegram is configured post-deploy via the in-sandbox `hermes-setup-tg` wizard.",
+  "shape": "single",
+  "upstream": {
+    "repo": "https://github.com/NousResearch/hermes-agent",
+    "stars_at_template_creation": 128764,
+    "license": "MIT",
+    "homepage": "https://hermes-agent.nousresearch.com"
+  },
+  "required_secrets": [
+    {
+      "name": "ORB_API_KEY",
+      "format": "orb_*",
+      "obtain_at": "https://orbcloud.dev/dashboard/keys",
+      "purpose": "Authenticates with ORB Cloud."
+    },
+    {
+      "name": "GLM_API_KEY",
+      "format": "<32 hex>.<random>",
+      "obtain_at": "https://z.ai/manage-apikey/apikey-list — sign up for the GLM Coding Plan",
+      "purpose": "Z.AI / GLM API key. Sent to https://api.z.ai/api/coding/paas/v4 (GLM Coding Plan endpoint) via ORB's per-computer LLM proxy. ZAI_API_KEY is also accepted as an alias.",
+      "llm_base_url": "https://api.z.ai/api/coding/paas/v4",
+      "orb_proxy_observable": true
+    }
+  ],
+  "required_inputs": [],
+  "optional_inputs": [
+    {
+      "name": "DEPLOY_NAME",
+      "format": "string, unique within your org",
+      "default": "hermes-<random6>",
+      "purpose": "Identifier for this deploy. Used in DELETE /v1/swarms/<id> for teardown."
+    }
+  ],
+  "exposes": [
+    {
+      "port": 8443,
+      "url_template": "https://<computer-id>.orbcloud.dev/telegram",
+      "kind": "http",
+      "purpose": "Telegram webhook receiver. setWebhook is registered against this URL by the post-deploy `hermes-setup-tg` wizard."
+    }
+  ],
+  "post_deploy_steps": [
+    "Open https://api.orbcloud.dev/terminal/<computer-id>?key=$ORB_API_KEY in your browser",
+    "Run `hermes-setup-tg` (interactive wizard) — walks through @BotFather, validates the token, registers the webhook against the box's subdomain, writes config to /root/.hermes/.env. The supervisor in start.sh picks up the new env within 10s and starts `hermes gateway start`."
+  ],
+  "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/hermes)",
+  "agent_deploy_uri": "https://orbcloud.dev/templates/hermes/template.json",
+  "use_case_page": "https://orbcloud.dev/templates/hermes/",
+  "siblings": [
+    {
+      "name": "hermes-openrouter",
+      "description": "Same Hermes agent, OpenRouter as the LLM upstream — pick any of OpenRouter's 200+ models. Useful when you want model variety or aren't on the GLM Coding Plan.",
+      "human_deploy_command": "bash <(curl -fsSL https://orbcloud.dev/templates/hermes-openrouter)",
+      "status": "planned"
+    }
+  ],
+  "phase": "0"
+}

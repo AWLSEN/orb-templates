@@ -25,6 +25,7 @@ Same `POST /v1/swarms` underneath. Same outcome.
 | [`openclaw/`](./openclaw/) | OpenClaw Gateway, idle-free, wake-on-HTTP | 1 | Z.AI GLM Coding Plan | shipped |
 | [`openclaw-openrouter/`](./openclaw-openrouter/) | Same OpenClaw Gateway, any model in [OpenRouter](https://openrouter.ai/models)'s catalog | 1 | OpenRouter (model selectable via `OPENROUTER_MODEL`) | shipped |
 | [`bux/`](./bux/) | [Browser Use Box](https://github.com/browser-use/bux) — 24/7 Claude Code agent + Browser Use Cloud + Telegram bot | 1 | Anthropic (`claude /login` post-deploy) | v0 (pinned, sleep=never; webhook in v0.5) |
+| [`hermes/`](./hermes/) | [NousResearch Hermes Agent](https://github.com/NousResearch/hermes-agent) — Telegram + GLM Coding Plan, native webhook mode | 1 | Z.AI GLM Coding Plan | v0 (sleep=auto, full ORB shape) |
 
 More on the way.
 
